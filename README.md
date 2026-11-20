@@ -6,7 +6,8 @@
 
 Entry for the make.fun bounty **"Sum up 19 November's world news in one image"**:
 a pure-stdlib Python program that renders a 1024x1024 PNG summarizing the day's
-world news — 8 story cards across 7 desks on one newspaper-style page.
+world news — 33 stories across illustrated leads, regional features, dispatches,
+and numbered briefs with a world map.
 
 `main.py` writes `entry.png` to `$MAKEFUN_OUTPUT_DIR` (default `/output`).
 Deterministic: two runs produce byte-identical output. No network, no third-party
