@@ -168,8 +168,8 @@ RULE = (174, 164, 147)
 LAND = (116, 110, 99)
 EDGE = 28
 WIDTH = 1024 - 2*EDGE
-COLUMN = 312
-GUTTER = 16
+GUTTER = 22
+COLUMN = (WIDTH-2*GUTTER)//3
 SCALE = 3
 SIDE = 1024 * SCALE
 
@@ -215,11 +215,10 @@ for letter, terminals in {
     'U': ((-7, -12), (7, -12)), 'V': ((-8, -12), (8, -12)),
     'Y': ((-8, -12), (8, -12), (0, 9)), '1': ((1, 9),),
 }.items():
-    if terminals:
-        left, right, strokes = ROMAN[letter]
-        serifs = tuple(((x-2.7, y), (x+2.7, y)) for x, y in terminals)
-        MASTHEAD[letter] = (min(left, min(x-4 for x, y in terminals)),
-                            max(right, max(x+4 for x, y in terminals)), strokes + serifs)
+    left, right, strokes = ROMAN[letter]
+    serifs = tuple(((x-3, y), (x+3, y)) for x, y in terminals)
+    MASTHEAD[letter] = (min(left, min(x-4 for x, y in terminals)),
+                        max(right, max(x+4 for x, y in terminals)), strokes + serifs)
 MASTHEAD = condensed(.82, MASTHEAD)
 
 
@@ -370,28 +369,28 @@ def wrap(text, size, width, font):
 HEROES = (
     ('SHENZHEN SUMMIT', 'APEC 2026 · SHENZHEN · FIRST US-CHINA-RUSSIA SUMMIT',
      ('Trump, Xi and Putin', 'hold first three-way summit'),
-     'The three leaders met on the sidelines of the APEC gathering in Shenzhen.', 'REUTERS'),
+     'The three leaders met on the sidelines of the APEC gathering in Shenzhen.', 'BY REUTERS'),
     ('WORLD COURT · THE HAGUE', 'THE HAGUE · INTERNATIONAL COURT OF JUSTICE',
      ('World Court: Myanmar', 'committed genocide'),
-     "Judges ruled 9-6 in the case over Myanmar's treatment of the Rohingya.", 'THE HAGUE'),
+     "Judges ruled 9-6 in the case over Myanmar's treatment of the Rohingya.", 'FROM THE HAGUE'),
     ('COP31 · ANTALYA', 'ANTALYA · UN CLIMATE TALKS',
      ('COP31 draft drops', 'fossil-fuel aid goal'),
-     'A draft deal at the UN climate summit leaves out the goal for fossil-fuel aid.', 'CLIMATE'),
+     'A draft deal at the UN climate summit leaves out the goal for fossil-fuel aid.', 'CLIMATE DESK'),
 )
 
 FEATURES = (
     ('EUROPE', 'bridge', 'Ukraine strikes Kerch Bridge again',
-     'The crossing links Crimea and Russia.', 'KYIV INDEPENDENT'),
+      'The crossing links Crimea and Russia.', 'BY KYIV INDEPENDENT'),
     ('MIDDLE EAST', 'missile', 'Houthi missiles shot down',
-     'The missiles were intercepted in flight.', 'AL RASHEED'),
+      'The missiles were intercepted in flight.', 'BY AL RASHEED'),
     ('NORTH AMERICA', 'chart', 'Nvidia slides 28% this month',
-     'Shares fell as Anthropic went public.', 'CNBC'),
+      'Shares fell as Anthropic went public.', 'BY CNBC'),
     ('NORTH AMERICA', 'game', 'GTA VI goes on sale',
-     'Rockstar releases its latest game.', 'LOS ANGELES'),
+      'Rockstar releases its latest game.', 'FROM LOS ANGELES'),
     ('SOUTH AMERICA', 'fist', 'Colombian unions strike',
-     'Protesters take to the streets.', 'BOGOTA'),
+      'Protesters take to the streets.', 'FROM BOGOTA'),
     ('OCEANIA', 'medal', 'Champion breaks marathon record',
-     'Melbourne gets a new course best.', 'MELBOURNE'),
+      'Melbourne gets a new course best.', 'FROM MELBOURNE'),
 )
 
 DISPATCHES = (
@@ -446,20 +445,29 @@ def centered(page, text, x, y, width, size, color=INK, *, weight=2, font=SANS, t
           weight=weight, font=font, tracking=tracking)
 
 
-def source_label(page, text, x, width, card_bottom):
+def byline(page, text, x, width, card_bottom):
     previous_bottom = page.text_boxes[-1][1][3]
     y = math.ceil((previous_bottom+8)*SCALE)/SCALE
     first = len(page.text_boxes)
-    label(page, text.upper(), x, y, width, 7.2, GREY, weight=2, tracking=.62)
-    _, (left,top,right,bottom) = page.text_boxes[first]
-    assert top-previous_bottom >= 8, (text,'source top gap')
-    assert card_bottom-bottom >= 10, (text,'source bottom gap',card_bottom,bottom)
+    page.rect(x, y+3, 8, 1, RED)
+    label(page, text, x+13, y, width-13, 7.2, GREY, weight=2, tracking=.62)
+    _, (_,top,_,bottom) = page.text_boxes[first]
+    assert top-previous_bottom >= 8, (text,'byline top gap')
+    assert card_bottom-bottom >= 10, (text,'byline bottom gap',card_bottom,bottom)
     return bottom
 
 
 def check_bounds(page, first, x, y, w, h):
     for text, (left, top, right, bottom) in page.text_boxes[first:]:
-        assert x <= left < right <= x+w and y <= top < bottom <= y+h, (text, 'section bounds')
+        assert x <= left < right <= x+w and y <= top < bottom <= y+h, (
+            text, 'section bounds', (left, top, right, bottom), (x, y, x+w, y+h))
+
+
+def column_rules(page, top, bottom):
+    assert 3*COLUMN+2*GUTTER == WIDTH
+    for index in (1, 2):
+        center = EDGE+index*(COLUMN+GUTTER)-GUTTER/2
+        page.rect(center-.5, top, 1, bottom-top, RULE)
 
 
 def desk_chip(page, desk, x, y):
@@ -472,8 +480,8 @@ def masthead(page, count):
     label(page, f'THE WORLD IN ONE DAY · {count} STORIES · ACROSS THE GLOBE',
           EDGE, 23, 783, 10, RED, tracking=.7)
     label(page, 'WORLD EDITION', 872, 23, 124, 10, GREY, tracking=.7)
-    centered(page, 'Thursday 19 November 2026', EDGE, 48, WIDTH, 51, weight=5,
-             font=MASTHEAD, tracking=.7)
+    centered(page, 'THURSDAY 19 NOVEMBER 2026', EDGE, 51, WIDTH, 44, weight=6,
+             font=MASTHEAD, tracking=1.5)
     page.rect(EDGE, 129, WIDTH, 2, INK)
     page.rect(EDGE, 135, WIDTH, .5, INK)
 
@@ -543,12 +551,14 @@ class Illustration:
 def summit_art(art):
     backdrop = (39, 36, 44)
     cream, gold, scarlet = (252, 242, 221), (242, 185, 79), (219, 70, 53)
-    art.rect(0, 0, COLUMN, 138, backdrop)
-    art.rect(12, 12, 288, 112, (66, 54, 60))
+    art.rect(0, 0, art.width, art.height, backdrop)
+    art.rect(12, 12, art.width-24, 112, (66, 54, 60))
+    for y in (16, 20, 102):
+        art.rect(16, y, art.width-32, 1, (103, 77, 73))
     for center, name, jacket, halo, skin, hair in (
-        (57, 'TRUMP', BLUE, (81, 109, 157), (242, 177, 136), gold),
-        (156, 'XI', scarlet, (164, 65, 51), (232, 167, 119), (40, 32, 32)),
-        (255, 'PUTIN', BLUE, (92, 118, 159), (235, 188, 158), (180, 156, 133)),
+        (56, 'TRUMP', BLUE, (81, 109, 157), (242, 177, 136), gold),
+        (154, 'XI', scarlet, (164, 65, 51), (232, 167, 119), (40, 32, 32)),
+        (252, 'PUTIN', BLUE, (92, 118, 159), (235, 188, 158), (180, 156, 133)),
     ):
         def poly(points, color):
             art.polygon(tuple((center+x, y) for x, y in points), color)
@@ -561,9 +571,13 @@ def summit_art(art):
         poly(((-14, 44), (-16, 35), (-7, 27), (11, 26), (16, 32), (13, 42), (9, 35), (-8, 37)), hair)
         art.rect(center-8, 50, 3, 2, INK)
         art.rect(center+5, 50, 3, 2, INK)
+        art.path(((center, 51), (center-2, 57), (center+1, 57)), (158, 96, 73), 2)
         art.rect(center-4, 62, 8, 1, (138, 79, 59))
         poly(((-11, 77), (11, 77), (0, 98)), gold if name == 'XI' else cream)
         poly(((0, 82), (3, 89), (0, 104), (-3, 89)), gold if name == 'XI' else scarlet)
+        seam = tuple(channel*3//4 for channel in jacket)
+        art.path(((center-15, 82), (center-19, 89), (center-8, 102)), seam)
+        art.path(((center+15, 82), (center+19, 89), (center+8, 102)), seam)
         if name == 'TRUMP':
             for y, color in ((92, scarlet), (95, cream), (98, scarlet)):
                 art.rect(center-28, y, 11, 2, color)
@@ -580,15 +594,18 @@ def summit_art(art):
 def court_art(art):
     backdrop, field = (31, 46, 58), (39, 63, 79)
     stone, light, gold = (190, 175, 145), (247, 232, 202), (245, 180, 72)
-    art.rect(0, 0, COLUMN, 138, backdrop)
-    art.rect(12, 12, 288, 112, field)
+    art.rect(0, 0, art.width, art.height, backdrop)
+    art.rect(12, 12, art.width-24, 112, field)
     art.polygon(((29, 57), (113, 20), (197, 57)), light)
     art.polygon(((58, 51), (113, 29), (168, 51)), stone)
+    art.dot(113, 43, 4, backdrop)
+    art.rect(203, 23, 1, 96, (67, 89, 103))
     art.rect(37, 57, 152, 8, stone)
     for x in (48, 75, 102, 129, 156):
         art.rect(x, 67, 18, 5, light)
         art.rect(x+3, 72, 12, 33, light)
         art.rect(x+12, 72, 3, 33, stone)
+        art.rect(x+7, 74, .5, 29, stone)
         art.rect(x, 105, 18, 4, light)
     art.rect(38, 109, 151, 5, light)
     art.rect(31, 114, 165, 5, stone)
@@ -607,8 +624,10 @@ def court_art(art):
 def climate_art(art):
     field, water, leaf = (38, 69, 65), (67, 125, 170), (159, 198, 138)
     white, heat = (250, 231, 191), (226, 76, 53)
-    art.rect(0, 0, COLUMN, 138, (29, 47, 45))
-    art.rect(12, 12, 288, 112, field)
+    art.rect(0, 0, art.width, art.height, (29, 47, 45))
+    art.rect(12, 12, art.width-24, 112, field)
+    for y in (33, 54, 75):
+        art.path(((27, y), (43, y-4), (59, y+1), (76, y-3)), (70, 106, 96), 2)
     art.dot(129, 60, 42, (73, 100, 85))
     art.dot(129, 60, 38, water)
     art.path(((94, 48), (164, 48)), (138, 174, 190))
@@ -627,8 +646,14 @@ def climate_art(art):
     art.dot(208, 79, 9, heat)
     for y in (36, 46, 56, 66):
         art.rect(222, y, 9, 2, white)
-    art.rect(29, 105, 254, 19, AMBER)
-    art.type('DRAFT DROPS FOSSIL-FUEL AID GOAL', 29, 110, 254, 9, INK, weight=3)
+    art.path(((246, 70), (258, 59), (270, 59), (281, 44)), (199, 149, 83))
+    art.rect(25, 103, art.width-50, 22, white)
+    art.rect(25, 103, 3, 22, AMBER)
+    first = len(art.page.text_boxes)
+    # Pull quote from our own climate brief.
+    art.type('"leaves out the goal for fossil-fuel aid"', 33, 108, art.width-66,
+             8.5, INK, font=condensed(.9, ROMAN), weight=3)
+    check_bounds(art.page, first, art.x+33, art.y+107, art.width-66, 15)
 
 
 def section_header(page, title, right, y):
@@ -639,25 +664,30 @@ def section_header(page, title, right, y):
 
 def hero_row(page):
     section_header(page, 'THE FRONT PAGE', 'DIPLOMACY · JUSTICE · CLIMATE', 214)
-    content_shift = -6  # Preserve the source labels' 10px bottom clearance.
+    art_top, bottom = 229, 510
+    column_rules(page, art_top, bottom-6)
     for index, ((title, caption, lines, detail, source), draw) in enumerate(zip(
             HEROES, (summit_art, court_art, climate_art))):
         x = EDGE+index*(COLUMN+GUTTER)
         first = len(page.text_boxes)
-        if index:
-            page.rect(x-GUTTER/2, 235+content_shift, .5, 250, RULE)
-        draw(Illustration(page, x, 235+content_shift, COLUMN, 138))
-        label(page, title, x, 378+content_shift, COLUMN, 10, RED, weight=3, tracking=.7)
-        label(page, caption, x, 392+content_shift, COLUMN, 7.3, tracking=.25)
+        draw(Illustration(page, x, art_top, COLUMN, 138))
+        copy_start = len(page.text_boxes)
+        label(page, title, x, 373, COLUMN, 10, RED, weight=3, tracking=.7)
+        label(page, caption, x, 387, COLUMN, 7.3, tracking=.25)
         for line_index, line in enumerate(lines):
-            label(page, line, x, 404+content_shift+line_index*28, COLUMN, 19, weight=4, font=HEADLINE, tracking=.15,
-                  color=INK)
-        detail_lines = wrap(detail, 9.5, COLUMN-3, SANS)
+            label(page, line, x, 399+line_index*28, COLUMN, 18, weight=4,
+                  font=HEADLINE, tracking=.15)
+        detail_size = 9
+        detail_lines = wrap(detail, detail_size, COLUMN-3, SANS)
         assert len(detail_lines) == 2, (source, detail_lines)
         for line_index, line in enumerate(detail_lines):
-            label(page, line, x, 460+content_shift+line_index*14, COLUMN, 9.5, font=SANS, tracking=0)
-        source_label(page, source, x, COLUMN, 509)
-        check_bounds(page, first, x, 235+content_shift, COLUMN, 274-content_shift)
+            label(page, line, x, 455+line_index*14, COLUMN, detail_size, font=SANS, tracking=0)
+        byline(page, source, x, COLUMN, bottom)
+        # Consecutive text blocks must have visible clearance, including descenders.
+        copy = page.text_boxes[copy_start:]
+        for (a, box), (b, following) in zip(copy, copy[1:]):
+            assert round((following[1]-box[3])*SCALE) >= 2, (a, b, box, following)
+        check_bounds(page, first, x, art_top, COLUMN, bottom-art_top)
         page.rendered.append(lines[0])
 
 
@@ -704,6 +734,7 @@ def small_icon(art, icon, color):
 def secondary_grid(page):
     page.rect(EDGE, 510, WIDTH, 1, INK)
     section_header(page, 'AROUND THE WORLD', 'SIX STORIES IN FOCUS', 521)
+    column_rules(page, 535, 722)
     for index, (desk, icon, headline, detail, source) in enumerate(FEATURES):
         row, col = divmod(index, 3)
         x, y = EDGE+col*(COLUMN+GUTTER), 535+row*94
@@ -712,14 +743,15 @@ def secondary_grid(page):
         small_icon(Illustration(page, x, y+8, 49, 49), icon, DESK_COLORS[desk])
         tx, inner = x+59, COLUMN-59
         desk_chip(page, desk, tx, y+2)
-        lines = wrap(headline, 14, inner-3, HEADLINE)
+        headline_size, leading = 12.5, 19
+        lines = wrap(headline, headline_size, inner-3, HEADLINE)
         assert 1 <= len(lines) <= 2
         for line_index, line in enumerate(lines):
-            label(page, line, tx, y+16+line_index*20.5, inner, 14, INK, weight=3,
-                  font=HEADLINE, tracking=.1)
-        label(page, detail, tx, y+16+len(lines)*20.5, inner, 9.5, font=TAG, tracking=0)
-        source_label(page, source, tx, inner, y+98)
-        check_bounds(page, first, x, y, COLUMN, 98)
+            label(page, line, tx, y+16+line_index*leading, inner, headline_size, INK, weight=3,
+                   font=HEADLINE, tracking=.1)
+        label(page, detail, tx, y+16+len(lines)*leading, inner, 9, font=TAG, tracking=0)
+        byline(page, source, tx, inner, y+94)
+        check_bounds(page, first, x, y, COLUMN, 94)
         page.rendered.append(headline)
 
 
