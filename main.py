@@ -173,11 +173,15 @@ BTC = [('2026-11-13',68661), ('2026-11-14',65615), ('2026-11-15',64795),
        ('2026-11-19',62942)]
 
 NAVY = (12,21,38)
-PANEL = (22,35,63)
-WHITE = (242,245,250)
+PANEL = (20,31,56)
+PANEL_BORDER = (8,14,27)
+LEAD_PANEL = (26,41,69)
+WHITE = (255,255,255)
+BODY = (216,225,240)
 AMBER = (242,169,59)
-GREY = (143,160,188)
+GREY = (167,183,208)
 RULE = (47,63,87)
+CHART_FILL = (59,57,65)
 SCALE = 2
 SIDE = 1024 * SCALE
 
@@ -197,10 +201,16 @@ SANS = {chr(i+32): parse_glyph(s) for i,s in enumerate(SANS_COORDINATES.splitlin
 assert len(SANS) == 95
 ROMAN = dict(SANS)
 ROMAN.update({c: parse_glyph(s) for c,s in ROMAN_COORDINATES.items()})
-# Newspaper headlines use a condensed cut, retaining full cap height.
-HEADLINE = {c: (left*0.58,right*0.58,
-               tuple(tuple((x*0.58,y) for x,y in stroke) for stroke in strokes))
+
+
+def condensed(width):
+    return {c: (left*width,right*width,
+                tuple(tuple((x*width,y) for x,y in stroke) for stroke in strokes))
             for c,(left,right,strokes) in SANS.items()}
+
+
+HEADLINE = condensed(0.58)
+TAG = condensed(0.73)
 
 
 class Page:
@@ -208,7 +218,6 @@ class Page:
         self.pixels = bytearray(bytes(NAVY) * SIDE * SIDE)
         self.text_boxes = []
         self.rendered = []
-        self.panels = []
 
     def rect(self, x, y, w, h, color):
         x0,y0,x1,y1 = (round(v*SCALE) for v in (x,y,x+w,y+h))
@@ -218,21 +227,23 @@ class Page:
             start = (yy*SIDE+x0)*3
             self.pixels[start:start+len(row)] = row
 
-    def line(self, x0,y0,x1,y1,color,thickness=0.7):
-        x0,y0,x1,y1 = (round(v*SCALE) for v in (x0,y0,x1,y1))
+    def line(self, x0,y0,x1,y1,color,weight):
+        # Center the parallel tracks on the path, also for even weights.
+        steep = abs(y1-y0) > abs(x1-x0)
+        shift = (weight-1)/2
+        x0,x1 = (round(x*SCALE-(shift if steep else 0)) for x in (x0,x1))
+        y0,y1 = (round(y*SCALE-(0 if steep else shift)) for y in (y0,y1))
+        offsets = [(i,0) if steep else (0,i) for i in range(weight)]
+        ox,oy = offsets[-1]
+        bounds = (min(x0,x1),min(y0,y1),max(x0,x1)+ox+1,max(y0,y1)+oy+1)
+        assert 0 <= bounds[0] < bounds[2] <= SIDE and 0 <= bounds[1] < bounds[3] <= SIDE
         dx,dy = abs(x1-x0),-abs(y1-y0)
         sx,sy = (1 if x0<x1 else -1),(1 if y0<y1 else -1)
         err = dx+dy
-        # Parallel offsets yield thicker strokes without external raster libraries.
-        n = max(1,round(thickness*SCALE))
-        offsets = [(i-(n-1)//2,0) if dx < -dy else (0,i-(n-1)//2)
-                   for i in range(n)]
         rgb = bytes(color)
         while True:
             for ox,oy in offsets:
-                xx,yy = x0+ox,y0+oy
-                assert 0 <= xx < SIDE and 0 <= yy < SIDE
-                p = (yy*SIDE+xx)*3
+                p = ((y0+oy)*SIDE+x0+ox)*3
                 self.pixels[p:p+3] = rgb
             if x0==x1 and y0==y1:
                 break
@@ -243,10 +254,11 @@ class Page:
             if e <= dx:
                 err += dx
                 y0 += sy
+        return bounds
 
-    def text(self, text,x,y,size,color=WHITE,bold=False,font=SANS,width=None):
+    def text(self, text,x,y,size,color=WHITE,weight=2,font=SANS,width=None,tracking=0):
         # size is cap height; y is the cap top. F=-12, [=9.
-        advance = measure(text,size,font)
+        advance = measure(text,size,font,tracking)
         if width is not None:
             assert advance <= width+0.001, (text,advance,width)
         cursor = x
@@ -256,17 +268,14 @@ class Page:
             left,right,strokes = font[ch]
             for stroke in strokes:
                 pts = [(cursor+(px-left)*scale,y+(py+12)*scale) for px,py in stroke]
-                ink.extend(pts)
                 for p,q in zip(pts,pts[1:]):
-                    self.line(*p,*q,color,1.0 if bold else 0.55)
-            cursor += (right-left)*scale
+                    ink.append(self.line(*p,*q,color,weight))
+            cursor += (right-left)*scale+tracking
         if ink:
-            bounds = (min(p[0] for p in ink)-0.5,min(p[1] for p in ink)-0.5,
-                      max(p[0] for p in ink)+0.5,max(p[1] for p in ink)+0.5)
-            assert 0 <= bounds[0] < bounds[2] <= 1024
-            assert 0 <= bounds[1] < bounds[3] <= 1024
+            bounds = (min(b[0] for b in ink)/SCALE,min(b[1] for b in ink)/SCALE,
+                      max(b[2] for b in ink)/SCALE,max(b[3] for b in ink)/SCALE)
             if width is not None:
-                assert bounds[2] <= x+width+0.5, (text,bounds,x+width)
+                assert x <= bounds[0] and bounds[2] <= x+width, (text,bounds,x,width)
             self.text_boxes.append((text,bounds))
         return advance
 
@@ -288,8 +297,8 @@ class Page:
                 chunk(b'IDAT',zlib.compress(bytes(raw),9))+chunk(b'IEND',b''))
 
 
-def measure(text,size,font=SANS):
-    return sum(font[c][1]-font[c][0] for c in text)*size/21
+def measure(text,size,font=SANS,tracking=0):
+    return sum(font[c][1]-font[c][0] for c in text)*size/21+max(0,len(text)-1)*tracking
 
 
 def wrap(text,size,width,font=SANS):
@@ -307,14 +316,14 @@ def wrap(text,size,width,font=SANS):
 def region_panel(page,region,x,y,w,h,columns=1):
     first_box = len(page.text_boxes)
     stories = [r for r in REPORTS if r[1]==region]
-    page.rect(x,y,w,h,PANEL)
-    page.panels.append((x,y,x+w,y+h))
+    page.rect(x,y,w,h,PANEL_BORDER)
+    page.rect(x+1,y+2,w-2,h-3,PANEL)
+    page.rect(x,y,w,2,AMBER)
     tag = REGIONS[region]
-    tag_size = min(10.2, (w-56)*21/sum(SANS[c][1]-SANS[c][0] for c in tag))
-    page.text(tag,x+12,y+12,tag_size,AMBER,bold=True,width=w-48)
+    page.text(tag,x+12,y+11,12.8,AMBER,weight=3,font=TAG,width=w-48)
     count = '%02d' % len(stories)
-    page.text(count,x+w-12-measure(count,8),y+13,8,GREY)
-    page.rect(x+12,y+30,w-24,1,AMBER)
+    page.text(count,x+w-12-measure(count,8),y+15,8,GREY)
+    page.rect(x+12,y+32,w-24,1,RULE)
     inner_width = (w-24-(columns-1)*20)/columns
     batches = [stories[i*math.ceil(len(stories)/columns):(i+1)*math.ceil(len(stories)/columns)]
                for i in range(columns)]
@@ -327,24 +336,26 @@ def region_panel(page,region,x,y,w,h,columns=1):
         headline_width = inner_width-9
         plans = [(r,wrap(r[2],size,headline_width,HEADLINE)) for r in batch]
         assert all(1 <= len(lines) <= 2 for _,lines in plans), tag
-        needed = sum(len(lines)*leading+12 for r,lines in plans)
-        available = h-44
+        needed = sum(len(lines)*leading+9 for _,lines in plans)
+        available = h-54
         assert needed <= available, (tag,needed,available)
-        gap = (available-needed)/len(batch)
-        yy = y+42
-        for report,lines in plans:
-            item_top = yy
-            page.rect(tx,yy,2,8,AMBER)
+        gap = (available-needed)/(len(batch)-1)
+        yy = y+43
+        for i,(report,lines) in enumerate(plans):
+            if i:
+                if gap >= 6:
+                    page.rect(tx,yy+gap/2,inner_width,0.5,RULE)
+                yy += gap
+            page.rect(tx,yy,2,10,AMBER)
             for text in lines:
-                page.text(text,tx+9,yy,size,bold=True,font=HEADLINE,width=headline_width)
+                page.text(text,tx+9,yy,size,weight=3,font=HEADLINE,width=headline_width)
                 yy += leading
-            page.text(report[4].upper(),tx+9,yy+1,6.8,GREY,width=headline_width)
-            yy += 12+gap
-            assert yy <= y+h+0.001, (tag,report[0],yy,y+h)
-            assert yy > item_top
+            page.text(report[4].upper(),tx+9,yy,6.8,GREY,width=headline_width)
+            yy += 9
             page.rendered.append(report[0])
+        assert yy <= y+h-11+0.001, (tag,yy,y+h)
         if col < columns-1:
-            page.rect(tx+inner_width+10,y+42,0.5,h-54,RULE)
+            page.rect(tx+inner_width+10,y+43,1,h-54,RULE)
     for text,(left,top,right,bottom) in page.text_boxes[first_box:]:
         assert x <= left < right <= x+w, (tag,text,'horizontal bounds')
         assert y <= top < bottom <= y+h, (tag,text,'vertical bounds')
@@ -352,41 +363,48 @@ def region_panel(page,region,x,y,w,h,columns=1):
 
 def hero(page):
     x,y,w,h = 24,106,976,118
-    page.rect(x,y,w,h,PANEL)
-    page.rect(x,y,4,h,AMBER)
-    page.text('THE LEAD / ASIA',x+16,y+12,8,AMBER,bold=True)
+    page.rect(x,y,w,h,LEAD_PANEL)
+    page.rect(x,y,7,h,AMBER)
+    tx = x+20
+    page.text('THE LEAD / ASIA',tx,y+10,9,AMBER,weight=3)
     report = REPORTS[23]
-    lines = wrap(report[2],21,668,ROMAN)
-    assert 2 <= len(lines) <= 3
-    yy = y+28
-    for line in lines:
-        page.text(line,x+16,yy,21,bold=True,font=ROMAN,width=668)
-        yy += 30
-    page.text(report[3],x+16,yy+2,9,GREY,width=668)
-    page.text(report[4].upper(),x+16,yy+18,6.8,GREY)
-    assert yy+25 <= y+h
+    lines = wrap(report[2],26,670,ROMAN)
+    assert len(lines) == 2
+    for i,line in enumerate(lines):
+        page.text(line,tx,y+26+i*37,26,weight=5,font=ROMAN,width=670)
+    page.text(report[3],tx,y+93,9,BODY,width=670)
+    page.text(report[4].upper(),tx,y+108,6.8,GREY,width=670)
     if BTC:
         bx,by,bw,bh = 740,118,244,94
         page.rect(bx,by,1,bh,RULE)
-        page.text('BITCOIN / 7 DAILY CLOSES',bx+16,by,7,GREY,width=bw-24)
-        page.text(f'{BTC[-1][1]:,} USD',bx+16,by+17,17,AMBER,bold=True)
+        page.text('BITCOIN / 7 DAILY CLOSES',bx+16,by,8,BODY,width=bw-24)
+        page.text(f'{BTC[-1][1]:,} USD',bx+16,by+15,23,AMBER,weight=4,width=bw-24)
         values = [v for d,v in BTC]
         low,high = min(values),max(values)
-        points = [(bx+16+i*34,by+51+(high-v)/(high-low)*24) for i,v in enumerate(values)]
+        points = [(bx+16+i*34,by+47+(high-v)/(high-low)*26) for i,v in enumerate(values)]
+        baseline = by+81
+        for (px,py),(qx,qy) in zip(points,points[1:]):
+            for step in range(round((qx-px)*SCALE)):
+                dx = step/SCALE
+                top = py+(qy-py)*dx/(qx-px)
+                page.rect(px+dx,top,1/SCALE,baseline-top,CHART_FILL)
+        page.rect(points[0][0],baseline,points[-1][0]-points[0][0],1,RULE)
         for p,q in zip(points,points[1:]):
-            page.line(*p,*q,AMBER,1.1)
+            page.line(*p,*q,AMBER,4)
         for px,py in points:
-            page.rect(px-1,py-1,2,2,WHITE)
+            page.rect(px-1,py-2,2,4,WHITE)
+            page.rect(px-2,py-1,4,2,WHITE)
         for i,(date,close) in enumerate(BTC):
-            page.text(date[-2:],bx+12+i*34,by+83,5.5,GREY)
+            day = date[-2:]
+            page.text(day,points[i][0]-measure(day,5.5)/2,by+87,5.5,GREY)
 
 
 def main():
     page = Page()
-    page.text('WORLD NEWS IN ONE IMAGE',24,22,10,AMBER,bold=True)
+    page.text('WORLD NEWS IN ONE IMAGE',24,22,10,AMBER,weight=3)
     page.text('44 STORIES / 7 REGIONS',1000-measure('44 STORIES / 7 REGIONS',9),23,9,WHITE)
-    page.text('THURSDAY 19 NOVEMBER 2026',24,48,29,bold=True,font=ROMAN,width=880)
-    page.text('make.fun',1000-measure('make.fun',10),78,10,GREY)
+    page.text('make.fun',1000-measure('44 STORIES / 7 REGIONS',9)-20-measure('make.fun',9),23,9,GREY)
+    page.text('THURSDAY 19 NOVEMBER 2026',24,43,41,weight=7,font=ROMAN,width=976,tracking=0.4)
     page.rect(24,96,976,2,AMBER)
     hero(page)
     # Four columns, two tiers. Asia spans two columns in the lower tier.
@@ -397,7 +415,7 @@ def main():
     region_panel(page,5,520,608,232,364)
     region_panel(page,6,768,608,232,364)
     page.rect(24,988,976,1,AMBER)
-    page.text('SOURCES: 44 REPORTS ACROSS 7 REGIONS / ALL FACTS AS REPORTED 19 NOV 2026',24,1000,7,GREY,width=880)
+    page.text('SOURCES: 44 REPORTS ACROSS 7 REGIONS / ALL FACTS AS REPORTED 19 NOV 2026',24,1000,7,BODY,width=880)
     page.text('make.fun',1000-measure('make.fun',9),998,9,AMBER)
     assert sorted(page.rendered) == list(range(1,45))
     # Compare actual glyph ink rectangles, including descenders and stroke width.
