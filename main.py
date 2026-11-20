@@ -199,13 +199,11 @@ def condensed(width, font=SANS):
             for c,(left,right,strokes) in font.items()}
 
 
-HEADLINE = condensed(0.72)
 TAG = condensed(0.86)
 
-# Add bracket-like terminals to the masthead capitals and widen their
-# bearings slightly where the serifs reach beyond the original glyphs.
-MASTHEAD = dict(ROMAN)
-for letter, terminals in {
+# Rowmans shares its letter skeletons with futural. Give the display faces
+# visible serifs at the stem terminals, with room for the stroked ends.
+CAP_TERMINALS = {
     'A': ((-8, 9), (8, 9)), 'B': ((-7, -12), (-7, 9)),
     'D': ((-7, -12), (-7, 9)), 'E': ((-6, -12), (-6, 9)),
     'H': ((-7, -12), (7, -12), (-7, 9), (7, 9)),
@@ -214,12 +212,37 @@ for letter, terminals in {
     'R': ((-7, -12), (-7, 9), (7, 9)), 'T': ((0, 9),),
     'U': ((-7, -12), (7, -12)), 'V': ((-8, -12), (8, -12)),
     'Y': ((-8, -12), (8, -12), (0, 9)), '1': ((1, 9),),
-}.items():
-    left, right, strokes = ROMAN[letter]
-    serifs = tuple(((x-3, y), (x+3, y)) for x, y in terminals)
-    MASTHEAD[letter] = (min(left, min(x-4 for x, y in terminals)),
-                        max(right, max(x+4 for x, y in terminals)), strokes + serifs)
-MASTHEAD = condensed(.82, MASTHEAD)
+}
+
+
+def serif_face(terminals, serif_width):
+    face = dict(ROMAN)
+    for letter, ends in terminals.items():
+        left, right, strokes = face[letter]
+        serifs = tuple(((x-serif_width, y), (x+serif_width, y)) for x, y in ends)
+        face[letter] = (min(left, min(x-serif_width-1 for x, _ in ends)),
+                        max(right, max(x+serif_width+1 for x, _ in ends)), strokes+serifs)
+    return face
+
+
+MASTHEAD = condensed(.82, serif_face(CAP_TERMINALS, 3))
+EDITORIAL_ROMAN = serif_face({**CAP_TERMINALS,
+    'F': ((-6, -12), (-6, 9)), 'I': ((0, -12), (0, 9)), 'J': ((4, -12),),
+    'K': ((-7, -12), (-7, 9), (7, -12), (7, 9)), 'L': ((-6, -12),),
+    'P': ((-7, -12), (-7, 9)), 'W': ((-10, -12), (0, -12), (10, -12)),
+    'X': ((-7, -12), (7, -12), (-7, 9), (7, 9)),
+    'a': ((6, 9),), 'b': ((-6, -12),), 'd': ((6, -12), (6, 9)),
+    'f': ((0, 9),), 'h': ((-5, -12), (-5, 9), (6, 9)),
+    'i': ((0, -5), (0, 9)), 'j': ((1, -5),),
+    'k': ((-5, -12), (-5, 9), (6, 9)), 'l': ((0, -12), (0, 9)),
+    'm': ((-11, -5), (-11, 9), (0, 9), (11, 9)),
+    'n': ((-5, -5), (-5, 9), (6, 9)), 'p': ((-6, -5), (-6, 16)),
+    'q': ((6, 16),), 'r': ((-3, -5), (-3, 9)),
+    'u': ((-5, -5), (6, -5), (6, 9)), 'v': ((-6, -5), (6, -5)),
+    'w': ((-8, -5), (0, -5), (8, -5)), 'y': ((-6, -5), (6, -5)),
+}, 2.8)
+HEADLINE = condensed(.88, EDITORIAL_ROMAN)
+HERO_HEADLINE = condensed(.79, EDITORIAL_ROMAN)
 
 
 class Page:
@@ -471,9 +494,11 @@ def column_rules(page, top, bottom):
 
 
 def desk_chip(page, desk, x, y):
-    width = math.ceil(measure(desk, 7.5, TAG, .48))+14
-    page.rect(x, y, width, 15, DESK_COLORS[desk])
-    label(page, desk, x+7, y+4, width-13, 7.5, PAPER, tracking=.48)
+    size, tracking = 7.5, .65
+    width = math.ceil(measure(desk, size, TAG, tracking))+12
+    page.rect(x, y+4, 5, 5, DESK_COLORS[desk])
+    page.rect(x+9, y, width, 13, INK)
+    label(page, desk, x+15, y+2.5, width-10, size, (255, 255, 255), tracking=tracking)
 
 
 def masthead(page, count):
@@ -493,15 +518,19 @@ def stats_bar(page):
         ('109-0', 'SENATE VOTE'), ('4.9%', 'UNEMPLOYMENT'), ('+2,000', 'ALASKAN WALRUS'),
     )
     cell = WIDTH/len(stats)
+    for y, thickness in ((140, 1.5), (144, .5), (198, .5), (202, 1.5)):
+        page.rect(EDGE, y, WIDTH, thickness, INK)
+    for x in (EDGE, EDGE+WIDTH-.5):
+        page.rect(x, 140, .5, 63.5, INK)
     for index, (number, title) in enumerate(stats):
         x = EDGE+index*cell
         first = len(page.text_boxes)
         if index:
-            page.rect(x, 145, .5, 49, RULE)
-        centered(page, number, x+4, 147, cell-8, 27, (RED, BLUE)[index % 2], weight=5, font=HEADLINE)
-        centered(page, title, x+4, 187, cell-8, 8, GREY, font=TAG, tracking=.4)
+            page.rect(x, 145, .5, 53, RULE)
+        color = RED if number in ('9-6', '$120bn') else INK
+        centered(page, number, x+4, 149, cell-8, 25, color, weight=5, font=HEADLINE)
+        centered(page, title, x+4, 185, cell-8, 8, GREY, font=TAG, tracking=.4)
         check_bounds(page, first, x+4, 145, cell-8, 53)
-    page.rect(EDGE, 202, WIDTH, 1, INK)
 
 
 class Illustration:
@@ -672,16 +701,19 @@ def hero_row(page):
         first = len(page.text_boxes)
         draw(Illustration(page, x, art_top, COLUMN, 138))
         copy_start = len(page.text_boxes)
-        label(page, title, x, 373, COLUMN, 10, RED, weight=3, tracking=.7)
-        label(page, caption, x, 387, COLUMN, 7.3, tracking=.25)
-        for line_index, line in enumerate(lines):
-            label(page, line, x, 399+line_index*28, COLUMN, 18, weight=4,
-                  font=HEADLINE, tracking=.15)
-        detail_size = 9
+        label(page, title, x, 371, COLUMN, 10, RED, weight=3, tracking=.7)
+        label(page, caption, x, 385, COLUMN, 7.3, tracking=.25)
+        headline_size = 19.8
+        headline_lines = wrap(' '.join(lines), headline_size, COLUMN-5, HERO_HEADLINE)
+        assert len(headline_lines) == 2, (title, headline_lines)
+        for line_index, line in enumerate(headline_lines):
+            label(page, line, x, 395+line_index*30, COLUMN, headline_size, weight=4,
+                  font=HERO_HEADLINE, tracking=.15)
+        detail_size = 8.5
         detail_lines = wrap(detail, detail_size, COLUMN-3, SANS)
         assert len(detail_lines) == 2, (source, detail_lines)
         for line_index, line in enumerate(detail_lines):
-            label(page, line, x, 455+line_index*14, COLUMN, detail_size, font=SANS, tracking=0)
+            label(page, line, x, 456+line_index*14, COLUMN, detail_size, font=SANS, tracking=0)
         byline(page, source, x, COLUMN, bottom)
         # Consecutive text blocks must have visible clearance, including descenders.
         copy = page.text_boxes[copy_start:]
@@ -746,10 +778,15 @@ def secondary_grid(page):
         headline_size, leading = 12.5, 19
         lines = wrap(headline, headline_size, inner-3, HEADLINE)
         assert 1 <= len(lines) <= 2
+        if len(lines) == 2:
+            words = headline.split()
+            breaks = [(' '.join(words[:i]), ' '.join(words[i:])) for i in range(1, len(words))]
+            lines = min(breaks, key=lambda pair: max(measure(line, headline_size, HEADLINE)
+                                                     for line in pair))
         for line_index, line in enumerate(lines):
-            label(page, line, tx, y+16+line_index*leading, inner, headline_size, INK, weight=3,
+            label(page, line, tx, y+17+line_index*leading, inner, headline_size, INK, weight=3,
                    font=HEADLINE, tracking=.1)
-        label(page, detail, tx, y+16+len(lines)*leading, inner, 9, font=TAG, tracking=0)
+        label(page, detail, tx, y+17+len(lines)*leading, inner, 8.6, font=TAG, tracking=0)
         byline(page, source, tx, inner, y+94)
         check_bounds(page, first, x, y, COLUMN, 94)
         page.rendered.append(headline)
@@ -765,9 +802,9 @@ def dispatch_row(page):
         first = len(page.text_boxes)
         if index:
             page.rect(left, 735, .5, 61, RULE)
-        label(page, desk, x, 736, inner, 7.5, DESK_COLORS[desk], weight=3, tracking=.55)
+        desk_chip(page, desk, x, 734)
         for line_index, line in enumerate(headline.splitlines()):
-            label(page, line, x, 748+line_index*18, inner, 11.5, INK, weight=3, font=HEADLINE)
+            label(page, line, x, 750+line_index*17, inner, 11.5, INK, weight=3, font=HEADLINE)
         label(page, source, x, 784, inner, 7.3, tracking=.35)
         check_bounds(page, first, x, 735, inner, 61)
         page.rendered.append(headline)
@@ -803,14 +840,16 @@ def ticker(page):
     section_header(page, 'WHERE IT HAPPENED', 'NEWS IN BRIEF · MAP PINS MATCH STORY NUMBERS', 810)
     dot_map(page, EDGE, 827)
     label(page, 'DOT MAP: NATURAL EARTH 1:110M', EDGE, 959, 260, 6.5, tracking=.35)
+    top, row_height, rows = 829, 14, 10
     for col, x in enumerate((307, 654)):
-        page.rect(x-9, 827, .5, 137, RULE)
-        for row, (headline, _) in enumerate(BULLETINS[col*10:(col+1)*10]):
-            number = col*10+row+1
-            row_height = 14
-            y = 830+row*row_height
-            label(page, f'{number:02d}', x, y, 22, 8.3, RED, weight=3, tracking=.55)
+        page.rect(x-9, 827, .5, top+rows*row_height-827, RULE)
+        start = col*rows
+        for row, (headline, _) in enumerate(BULLETINS[start:start+rows]):
+            y = top+row*row_height
+            first = len(page.text_boxes)
+            label(page, f'{start+row+1:02d}', x, y+1, 22, 8.3, RED, weight=3, tracking=.55)
             label(page, headline, x+25, y, 309, 9.2, INK, font=SANS, tracking=.05)
+            check_bounds(page, first, x, y, 334, row_height)
             page.rendered.append(headline)
 
 
@@ -818,10 +857,10 @@ def footer(page):
     page.rect(EDGE, 971, WIDTH, 1.5, INK)
     page.rect(EDGE, 975, WIDTH, .5, RULE)
     centered(page, 'DATE CHECK: Every story on this paper happened on or before 19 Nov 2026',
-             EDGE, 987, WIDTH, 8.8, INK, weight=2, tracking=.22)
+             EDGE, 988, WIDTH, 8.8, INK, weight=2, tracking=.22)
     centered(page, 'SOURCES: REUTERS, AP, AFP, BBC, AL JAZEERA, CNN, NBC, TIMES OF INDIA, GUARDIAN, '
              'LE MONDE, KYIV INDEPENDENT, SYDNEY MORNING HERALD — 2026-11-19',
-             EDGE, 1003, WIDTH, 7.2, GREY, font=TAG, tracking=.32)
+             EDGE, 1004, WIDTH, 7.2, GREY, font=TAG, tracking=.32)
 
 
 def main():
