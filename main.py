@@ -120,6 +120,7 @@ ROMAN_COORDINATES = {
 }
 
 # Natural Earth 1:110m, 180 by 90 samples packed row-major, high bit first.
+MASK_COLS, MASK_ROWS = 180, 90
 LANDMASK_B64 = (
     'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
     'AAAAAAAAAAAAAAAAAP//7//wAAAAAAAAAAAAAAAAAAAAAAB///////AA/wDwAAHgAAAAAAAAAAAHf///'
@@ -157,89 +158,29 @@ LANDMASK_B64 = (
     '////////////////////////////////////////////////////////////'
 )
 
-# Panel and map key order. The global business desk only appears in the key.
+# Eight selected reports for the compact 19 November 2026 edition.
+# Map pins use (longitude, latitude) on the landmask's equirectangular grid.
 REGIONS = (
-    ('AMERICAS', (0.28, 0.45)), ('EUROPE', (0.51, 0.30)),
-    ('RUSSIA & UKRAINE', (0.65, 0.30)), ('MIDDLE EAST', (0.57, 0.45)),
-    ('AFRICA', (0.55, 0.60)), ('ASIA', (0.75, 0.45)),
-    ('TECHNOLOGY & BUSINESS', None),
+    ('AMERICAS', (-60, 5)), ('EUROPE', (11, 49)),
+    ('RUSSIA & UKRAINE', (42, 51)), ('MIDDLE EAST', (46, 24)),
+    ('AFRICA', (23, 0)), ('ASIA', (116, 31)),
 )
-# The supplied reports, unedited. Tuple fields: id, region index, headline,
-# detail, source. Keeping the detail also makes this entry's data auditable.
 REPORTS = [
- (1,0,'Senate Republicans block Democratic effort to end war in Iran','Forty-eight-to-fifty-one vote was first since midterm losses','AP'),
- (2,0,'House Democrats nominate Hakeem Jeffries for House speaker','He would be first African American to hold the role','Reuters'),
- (3,0,'Appeals court halts order restoring deportation protections for Venezuelans','Ninth Circuit pause blocks reinstatement of Temporary Protected Status','AP'),
- (4,0,'US defence chief Hegseth signs military pact with Venezuela in Caracas','Military cooperation resumes after 21-year freeze, leader says','LatinNews'),
- (5,0,'Trump official floated ceding Guyanese territory to Venezuela','State Department planning director raised idea in September, sources say','Reuters'),
- (6,1,'European allies rally for Ukraine at Berlin summit','Coalition of the Willing reaffirms binding security guarantees','Reuters'),
- (7,1,'Netherlands summons Russian ambassador after Kyiv embassy hit','Projectile landed behind Dutch embassy; nobody injured','Reuters'),
- (8,1,'EU proposes 45-billion-euro loan to bridge Ukraine funding gap','Loan covers part of 70-billion-euro shortfall for next year','Reuters'),
- (9,1,'French Greens ready to back Melenchon presidential bid','Hard-left leader gains potential ally for 2027 race','Reuters'),
- (10,1,'France raises bird flu alert to maximum level','Poultry confinement rules take effect Friday amid European spread','Reuters'),
- (11,1,'Bundesbank says German growth and inflation set to accelerate','Fiscal stimulus drives expansion; inflation to rise sharply in 2027','Reuters'),
- (12,1,'European stocks rebound as Anthropic IPO lifts tech optimism','ASML and chipmakers lead gains after three losing sessions','Reuters'),
- (13,2,'Suspected Houthi missile strikes Riyadh skyscraper housing wealth fund','Saudi sovereign wealth fund headquarters hit, no major casualties reported','Reuters'),
- (14,2,'Israel ends first major Gaza ground operation since ceasefire','Operation in Nuseirat targeted tunnel; thousands displaced again','Al Jazeera'),
- (15,2,'Saudi-led coalition says it repelled Houthi attacks on kingdom','Escalation follows strike on Riyadh fund headquarters tower','Al Jazeera'),
- (16,2,'Trump says US will see what happens with Iran after January 1','Comments delay decision on renewed major strikes into next year','Reuters'),
- (17,2,'UNICEF warns water production nearly halved in Yemeni city of Taiz','More than 800,000 people cut off from humanitarian assistance','Al Jazeera'),
- (18,2,'Mosque torched in northern Israel sparks backlash against Netanyahu','Suspected arson hits Palestinian Arab village of al-Dahi','Al Jazeera'),
- (19,3,'Dozens missing as migrant boat capsizes off Senegal coast','Boast bound for Europe overturned, local NGO says','Reuters'),
- (20,3,'Sudanese army bombs RSF intelligence headquarters in Nyala','Strikes also hit command facility and civilian administration building','Sudan Tribune'),
- (21,3,"RSF claims capture of Bau district in Sudan's Blue Nile state",'Army units fled toward state capital, paramilitary group claims','Sudan Tribune'),
- (22,3,'Ethiopia and Eritrea amass forces along border, raising war fears','Overnight drone and artillery strikes reported around Badme','Reuters'),
- (23,3,'Nigerian military rescues 125 kidnap victims, dismantles terror camps','United States commends operation ahead of 2027 elections','Premium Times'),
- (24,4,'Trump, Xi, Putin hold first-ever trilateral summit in Shenzhen','Leaders met on sidelines of APEC summit in southern China','Reuters'),
- (25,4,'Three powers issue peace declaration pledging nuclear restraint','Statement says nuclear war cannot be won and must never be fought','Reuters'),
- (26,4,"Japan's PM Takaichi cuts isolated figure at APEC summit",'China rift over Taiwan remarks brought muted reception, no bilateral','Reuters'),
- (27,4,'Taiwan reports two Russian military aircraft near island','Tu-95 bombers flew past east coast, second time this week','Reuters'),
- (28,4,'Indonesia parliament passes asset forfeiture bill into law','Law allows seizing assets in certain criminal cases','Reuters'),
- (29,4,'Violence rises in Bangladesh as Hasina supporters escalate protests',"Protests by former PM's supporters fuel instability",'Reuters'),
- (30,4,'South Korea becomes fourth country to reach one trillion dollars in exports','AI chip boom powers milestone, government data shows','Reuters'),
- (31,4,"South Korea's Supreme Court orders retrial for ex-PM Han",'Ruling concerns his role in martial law attempt','Reuters'),
- (32,5,'Third Ukrainian strike in four days halts Kerch Bridge traffic','Overnight attack stopped rail traffic; repairs resumed later Thursday','AP'),
- (33,5,'Putin rules out Black Sea and energy truce after bridge strikes',"Vows response far more painful than Kyiv's attack",'Reuters'),
- (34,5,'Putin invites European envoys to Moscow on Ukraine talks','Says Europe must clarify position before format is decided','Reuters'),
- (35,5,'Trump says nuclear arms limits with China and Russia will be hard','Joint dialogue on reducing nuclear risks agreed at summit','Reuters'),
- (36,5,'Russian strikes kill two, wound 23 across 12 Ukrainian regions','Kyiv says Russia launched Oniks missiles and 98 drones overnight','AP'),
- (37,5,"Ukrainian drone attacks nearly halve Russia's November oil refining",'Campaign targets refining capacity, sources tell Reuters','Reuters'),
- (38,5,'Kremlin says Ukraine was main topic at Trump-Putin meeting',"Aide Ushakov says Putin's mood after talks was excellent",'Reuters'),
- (39,6,'Anthropic debut fails to revive AI trade; Dow closes below 50,000','Nasdaq falls 2.25 percent to 23,879.20 in broad selloff','CNBC'),
- (40,6,'Anthropic raises 81 billion dollars in largest IPO on record','Claude maker priced at 83 dollars, closed up 17 percent','CNBC'),
- (41,6,'Nvidia slides 28 percent this month amid CEO Huang resignation fallout','Investors question profitability of heavy AI infrastructure spending','CNBC'),
- (42,6,'Gold sinks over 3 percent to more-than-one-year low','Hawkish Fed signals lift dollar and Treasury yields','Reuters'),
- (43,6,'Bitcoin slides under 62,000 dollars, down about 25 percent in a month','Anthropic-led tech selloff extends crypto slump','Bitcoin Magazine'),
- (44,6,'Oil prices slide as hawkish Fed signals lift the dollar','Global stocks also slip ahead of Anthropic market debut','Reuters'),
+ (1,0,'US-Venezuela military pact; Senate blocks bid to end Iran war','Military cooperation resumes; Senate rejects war-ending effort','LATINNEWS / AP'),
+ (2,1,'Allies back Ukraine at Berlin summit; EU eyes EUR 45bn loan','Reuters reports security pledges and proposed financing','REUTERS'),
+ (3,2,'Putin rejects sea and energy truce; Russian strikes kill 2, hurt 23','Reuters / AP','REUTERS / AP'),
+ (4,3,'Suspected Houthi hit on Riyadh; Israel ends Gaza operation','Reuters / Al Jazeera','REUTERS / AL JAZEERA'),
+ (5,4,'Ethiopia-Eritrea war fears rise','Forces amass along the border near Badme','REUTERS'),
+ (6,5,'Trump, Xi, Putin: first trilateral summit in Shenzhen','Leaders met on the sidelines of APEC','REUTERS'),
+ (7,6,'Anthropic raises $81bn in record IPO; Nvidia down 28% this month','Anthropic closes up 17 percent; Nvidia monthly decline','CNBC'),
+ (8,6,'Bitcoin: 19 Nov close 62,942 USD','Seven daily closes: 13-19 November 2026','COINGECKO'),
 ]
 BTC = [('2026-11-13',68661), ('2026-11-14',65615), ('2026-11-15',64795),
        ('2026-11-16',65030), ('2026-11-17',63795), ('2026-11-18',63253),
        ('2026-11-19',62942)]
 
 # Short display headlines keyed to the original reports above.
-PANEL_STORIES = (
-    ((4, 'US and Venezuela sign military pact'),
-     (1, 'US Senate blocks bid to end Iran war'),
-     (5, 'US aide eyed ceding Guyana land')),
-    ((6, 'Allies back Ukraine at Berlin summit'),
-     (8, 'EU eyes EUR 45bn Ukraine loan'),
-     (10, 'France: Maximum bird flu alert')),
-    ((33, 'Putin rejects sea and energy truce'),
-     (36, 'Russian strikes: 2 dead, 23 hurt'),
-     (37, 'Strikes nearly halve Russian oil refining')),
-    ((13, 'Suspected Houthi hit on Riyadh'),
-     (14, 'Israel ends Gaza ground operation'),
-     (17, 'Taiz water output nearly halves')),
-    ((22, 'Ethiopia-Eritrea war fears rise'),
-     (19, 'Dozens missing off Senegal'),
-     (23, 'Nigeria rescues 125 kidnap victims')),
-    ((27, 'Russian aircraft near Taiwan'),
-     (29, 'Bangladesh protest violence rises'),
-     (30, 'S. Korea hits $1tn in exports')),
-    ((40, 'Anthropic IPO'),
-     (41, 'Nvidia -28%'),
-     (42, 'Gold drops >3%')),
-)
+PANEL_STORIES = tuple(((i, headline),) for i, _, headline, _, _ in REPORTS)
 
 NAVY = (12,21,38)
 PANEL = (22,35,63)
@@ -415,17 +356,18 @@ def measure(text,size,font=SANS,tracking=0):
 
 
 def wrap(text, size, width, font):
-    def fits(line):
-        return measure(line, size, font) <= width
-
-    if fits(text):
-        return [text]
-    words = text.split()
-    pairs = [(' '.join(words[:i]), ' '.join(words[i:])) for i in range(1, len(words))]
-    choices = [pair for pair in pairs if all(map(fits, pair))]
-    assert choices, (text, size, width)
-    return min(choices, key=lambda pair: abs(measure(pair[0], size, font)
-                                           - measure(pair[1], size, font)))
+    lines, current = [], ''
+    for word in text.split():
+        trial = (current + ' ' + word).strip()
+        if current and measure(trial, size, font) > width:
+            lines.append(current)
+            current = word
+        else:
+            current = trial
+    if current:
+        lines.append(current)
+    assert all(measure(line, size, font) <= width for line in lines), (text, size, width)
+    return lines
 
 
 def card(page, x, y, w, h, color=PANEL):
@@ -520,12 +462,10 @@ def hero(page, x, y, w, h):
 
 def world_map(page, x, y, w, h):
     first = card(page, x, y, w, h)
-    page.text('WORLD MAP', x+16, y+18, 19, AMBER, weight=3, font=TAG, width=w-32)
-    page.rect(x+16, y+49, w-32, 1, RULE)
-
-    mx, my, mw = x+16, y+96, w-32
-    mh = mw/2
-    page.rect(mx, my-12, mw, mh+24, MAP_WATER)
+    cell = 5
+    mw, mh = MASK_COLS*cell, MASK_ROWS*cell
+    mx, my = x+(w-mw)/2, y+8
+    page.rect(mx, my, mw, mh, MAP_WATER)
     for i in range(1, 6):
         page.rect(mx+i*mw/6, my, 0.5, mh, RULE)
     for i in range(1, 4):
@@ -533,34 +473,21 @@ def world_map(page, x, y, w, h):
 
     packed = base64.b64decode(LANDMASK_B64, validate=True)
     mask = ''.join(f'{byte:08b}' for byte in packed)
-    assert len(mask) == 180*90
-    cell = mw/180
-    # Average 4x4 mask samples so each land dot has clear space around it.
-    for row in range(0, 90, 4):
-        rows = range(row, min(row+4, 90))
-        for col in range(0, 180, 4):
-            land_samples = sum(mask[r*180+col:r*180+col+4].count('1') for r in rows)
-            if land_samples >= len(rows)*2:
-                page.dot(mx+(col+2)*cell, my+(row+len(rows)/2)*cell, 3.7, LAND)
-    for i, (_, pin) in enumerate(REGIONS, 1):
-        if pin is not None:
-            px, py = mx+pin[0]*mw, my+pin[1]*mh
-            page.dot(px, py, 15.5, NAVY)
-            chip(page, i, px, py, 27)
-
-    lx, ly = x+16, y+379
-    page.rect(lx, ly-18, w-32, 1, RULE)
-    for i, (label, pin) in enumerate(REGIONS):
-        col, row = i % 2, i // 2
-        xx, yy = lx+col*(mw/2)+13, ly+row*37
-        chip(page, i+1, xx, yy+11, 22, filled=pin is not None)
-        width = mw/2-31 if pin is not None else mw-31
-        page.text(label, xx+18, yy+4, 13, BODY, weight=2, font=TAG, width=width)
-        if pin is None:
-            page.text('GLOBAL', xx+252, yy+6, 10, GREY, width=75)
-    page.rect(lx, y+h-45, mw, 1, RULE)
-    page.text('NUMBERS LINK TO REGION PANELS / DOT MAP: NATURAL EARTH 1:110M',
-              lx, y+h-30, 9, GREY, font=TAG, width=mw)
+    assert len(mask) == MASK_COLS*MASK_ROWS
+    for index, sample in enumerate(mask):
+        if sample == '1':
+            row, col = divmod(index, MASK_COLS)
+            page.dot(mx+(col+0.5)*cell, my+(row+0.5)*cell, 2.5, LAND)
+    for i, (label, (lon, lat)) in enumerate(REGIONS, 1):
+        u, v = (lon+180)/360, (90-lat)/180
+        assert 0 <= u < 1 and 0 <= v < 1, (label, 'pin outside map')
+        col, row = int(u*MASK_COLS), int(v*MASK_ROWS)
+        assert mask[row*MASK_COLS+col] == '1', (label, 'pin in water')
+        px, py = mx+u*mw, my+v*mh
+        page.dot(px, py, 15.5, NAVY)
+        chip(page, i, px, py, 27)
+    page.text('PINS LINK TO THE STORIES BELOW / DOT MAP: NATURAL EARTH 1:110M',
+              mx, my+mh+5, 9, GREY, font=TAG, width=mw)
     check_card(page, first, x, y, w, h)
 
 
@@ -571,9 +498,10 @@ def bitcoin(page, x, y, w, h):
     page.text(f'{BTC[-1][1]:,} USD', tx, y+39, 33, AMBER, weight=4, width=inner)
     values = [value for _, value in BTC]
     low, high = min(values), max(values)
-    points = [(tx+7+i*(inner-14)/(len(values)-1), y+88+(high-v)/(high-low)*62)
+    plot_top, plot_bottom = y+65, y+h-29
+    points = [(tx+7+i*(inner-14)/(len(values)-1), plot_top+(high-v)/(high-low)*(plot_bottom-plot_top))
               for i, v in enumerate(values)]
-    baseline = y+h-25
+    baseline = y+h-18
     for (px, py), (qx, qy) in zip(points, points[1:]):
         for col in range(round(px*SCALE), round(qx*SCALE)):
             x_at = col/SCALE
@@ -586,14 +514,60 @@ def bitcoin(page, x, y, w, h):
         page.dot(px, py, 2.3, WHITE)
         day = date[-2:]
         page.text(day, px-measure(day, 8)/2, baseline+7, 8, GREY, width=16)
+    low_index = values.index(min(values))
+    lx, ly = points[low_index]
+    page.dot(lx, ly, 5, (232,75,75))
+    page.text(f'${values[low_index]:,}', lx-82, plot_top-2, 10, (232,75,75), weight=3, width=70)
+    page.text('LOWEST CLOSE OF THE WEEK', tx+inner-166, y+15, 7, (232,75,75), weight=2, width=166)
+    page.line(lx, plot_top+9, lx, ly-6, (232,75,75), 2)
+    check_card(page, first, x, y, w, h)
+
+
+def story_cards(page, x, y, w, h):
+    gap = 14
+    card_w = (w - 3*gap) / 4
+    card_h = (h - gap) / 2
+    for index, (report_id, region, headline, _, source) in enumerate(REPORTS):
+        row, col = divmod(index, 4)
+        xx, yy = x + col*(card_w+gap), y + row*(card_h+gap)
+        first = card(page, xx, yy, card_w, card_h)
+        chip(page, index+1, xx+24, yy+22, 27, filled=False)
+        tag = ('AMERICAS','EUROPE','RUSSIA & UKRAINE','MIDDLE EAST','AFRICA','ASIA / HERO','TECHNOLOGY & BUSINESS','BITCOIN')[index]
+        page.text(tag, xx+46, yy+15, 9, AMBER, weight=2, font=TAG, width=card_w-56)
+        page.rect(xx+46, yy+31, card_w-56, 1, AMBER)
+        size = 12.5
+        lines = wrap(headline, size, card_w-20, HEADLINE)
+        while len(lines) > 4:
+            size -= .25
+            lines = wrap(headline, size, card_w-20, HEADLINE)
+        ty = yy+43
+        for line in lines:
+            page.text(line, xx+10, ty, size, WHITE, weight=3, font=HEADLINE, width=card_w-20)
+            ty += 18
+        page.text(source, xx+10, yy+card_h-13, 6.5, GREY, width=card_w-20)
+        page.rendered.append(report_id)
+        check_card(page, first, xx, yy, card_w, card_h)
+
+
+def sources(page, x, y, w, h):
+    first = card(page, x, y, w, h)
+    page.text('REPORTED BY: REUTERS / AP / AL JAZEERA', x+14, y+16, 8, GREY, weight=2, width=w-28)
+    page.text('/ CNBC / LATINNEWS', x+14, y+34, 8, WHITE, weight=2, width=w-28)
+    page.text('MARKET DATA: COINGECKO', x+14, y+55, 8, GREY, weight=2, width=w-28)
+    wordmark = 'make.fun'
+    wordmark_width = measure(wordmark, 12)
+    wordmark_x = x+w-14-wordmark_width
+    page.text('ALL FACTS AS REPORTED 19 NOV 2026', x+14, y+h-16, 7.5, GREY,
+              font=TAG, width=wordmark_x-(x+14)-20, tracking=0.35)
+    page.text(wordmark, wordmark_x, y+h-18, 12, AMBER, width=wordmark_width)
     check_card(page, first, x, y, w, h)
 
 
 def main():
     page = Page()
-    page.text('WORLD NEWS IN ONE IMAGE', EDGE, 23, 13, AMBER, weight=2,
-              width=450, tracking=1.1)
-    count = '24 STORIES / 7 REGIONS'
+    page.text('MAKE.FUN  |  PICTURE OF THE DAY', EDGE, 23, 10.5, AMBER, weight=2,
+              width=450, tracking=.7)
+    count = '8 STORIES / 7 REGIONS'
     count_width = measure(count, 12, TAG, 1)
     page.text(count, 1024-EDGE-count_width, 24, 12, BODY, font=TAG,
               width=count_width, tracking=1)
@@ -601,35 +575,14 @@ def main():
               font=MASTHEAD, width=1024-2*EDGE, tracking=1.4)
     page.rect(EDGE, 112, 1024-2*EDGE, 1.5, AMBER)
 
-    content_y = 122
-    map_height = 592
-    chart_y = content_y+map_height+GUTTER
-    chart_height = 192
-    world_map(page, EDGE, content_y, LEFT_WIDTH, map_height)
-    bitcoin(page, EDGE, chart_y, LEFT_WIDTH, chart_height)
-
-    footer_y = chart_y+chart_height+GUTTER
-    page.rect(EDGE, footer_y, LEFT_WIDTH, 1, AMBER)
-    page.text('SOURCES: 24 REPORTS ACROSS 7 REGIONS /', EDGE, footer_y+14, 11,
-              BODY, font=TAG, width=LEFT_WIDTH)
-    page.text('ALL FACTS AS REPORTED 19 NOV 2026', EDGE, footer_y+31, 11,
-              BODY, font=TAG, width=LEFT_WIDTH)
-    page.text('make.fun', EDGE, footer_y+57, 12, AMBER, width=LEFT_WIDTH)
-
-    hero_height, row_height = 173, 199
-    hero(page, RIGHT_X, content_y, RIGHT_WIDTH, hero_height)
-    grid_y = content_y+hero_height+GUTTER
-    col_width = (RIGHT_WIDTH-GUTTER)/2
-    for index in range(6):
-        row, col = divmod(index, 2)
-        region_panel(page, index, RIGHT_X+col*(col_width+GUTTER),
-                     grid_y+row*(row_height+GUTTER), col_width, row_height)
-    tech_y = grid_y+3*(row_height+GUTTER)
-    region_panel(page, 6, RIGHT_X, tech_y, RIGHT_WIDTH, 1024-EDGE-tech_y)
-
-    assert len(page.rendered) == len(set(page.rendered)) == 24
-    assert all(sum(REPORTS[i-1][1] == region for i in page.rendered) >= 2
-               for region in range(len(REGIONS)))
+    world_map(page, 16, 130, 1008, 478)
+    story_cards(page, 24, 620, 976, 264)
+    bitcoin(page, 16, 892, 652, 116)
+    sources(page, 676, 892, 332, 116)
+    assert page.rendered == [report[0] for report in REPORTS]
+    assert len(page.rendered) == len(set(page.rendered)) == 8
+    assert {report[1] for report in REPORTS} == set(range(7))
+    assert [date for date, _ in BTC] == [f'2026-11-{day:02d}' for day in range(13, 20)]
     # Compare actual glyph ink rectangles, including descenders and stroke width.
     for i,(a,box) in enumerate(page.text_boxes):
         for b,other in page.text_boxes[i+1:]:
@@ -644,7 +597,7 @@ def main():
         f.write(png)
     print(json.dumps({'output':path,'bytes':len(png),'sha256':hashlib.sha256(png).hexdigest(),
                       'stories':len(page.rendered),'text_bounds_checked':len(page.text_boxes),
-                      'layout':'dot map and Bitcoin on left, Shenzhen lead and seven region cards on right'},sort_keys=True))
+                       'layout':'dot map above eight story cards, Bitcoin and sources below'},sort_keys=True))
 
 
 if __name__ == '__main__':
